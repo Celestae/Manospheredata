@@ -1,0 +1,49 @@
+import pandas as pd
+import requests
+import time
+import praw
+
+reddit = praw.Reddit(
+    client_id="",
+    client_secret="",
+    password="",
+    user_agent="",
+    username="",)
+
+
+df = pd.DataFrame(columns = ['Score','Body','Created','Subreddit','Author','Awards'])
+
+def get_comments_from_pushshift(**kwargs):
+    r = requests.get("https://api.pushshift.io/reddit/comment/search/",params=kwargs)
+    data = r.json()
+    return data['data']
+
+def get_comments_from_reddit_api(comment_ids):
+    headers = {'User-agent':'Comment Collector'}
+    params = {}
+    params['id'] = ','.join(["t1_" + id for id in comment_ids])
+    r = requests.get("https://api.reddit.com/api/info",params=params,headers=headers)
+    data = r.json()
+    return data['data']['children']
+before = None
+
+# It will gather all the comments a specific user posted in its account's lifetime, just insert their username.
+author = "(User)"
+while True:
+    comments = get_comments_from_pushshift(author=author,size=100,before=before,sort='desc',sort_type='created_utc')
+    if not comments: break
+
+    # This will get the comment ids from Pushshift in batches of 100 -- Reddit's API only allows 100 at a time
+    comment_ids = []
+    for comment in comments:
+        before = comment['created_utc'] # This will keep track of your position for the next call in the while loop
+        comment_ids.append(comment['id'])
+
+    # This will then pass the ids collected from Pushshift and query Reddit's API for the most up to date information
+    comments = get_comments_from_reddit_api(comment_ids)
+    for comment in comments:
+        comment = comment['data']
+        # Do stuff with the comments
+        new_row = {'Score':comment['score'], 'Body':comment['body'], 'Created':comment['created_utc'], 'Subreddit':comment['subreddit'],'Author':comment['author'],'Awards':comment['total_awards_received']}
+        df = df.append(new_row, ignore_index=True)
+    time.sleep(2)
