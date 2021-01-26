@@ -1,0 +1,34 @@
+# Enter the name of the Reddit user
+user = "(User)"
+
+
+gen = api.search_submissions(author=user)
+
+
+max_response_cache = 10000000
+cache = []
+
+
+print("Gathering all Submission Data...")
+for c in gen:
+    cache.append(c)
+
+    # Omit this test to actually return all results. Wouldn't recommend it though: could take a while, but you do you.
+    #if len(cache) >= max_response_cache:
+        #break
+
+# If you really want to: pick up where we left off to get the rest of the results.
+if False:
+    for c in gen:
+        cache.append(c)
+        
+print("Parsing Submission Data...")
+df = pd.DataFrame(columns = ['Author', 'Title', 'Body', 'Created', 'full_link','num_comments','locked','over_18','subreddit','total_awards_received','score'])
+for i in range(len(cache)):
+    new_row = {'Author':cache[i].author,'Title':cache[i].title, 'Body':cache[i].selftext, 'Created':cache[i].created, 'full_link':cache[i].full_link,'num_comments':cache[i].num_comments,'locked':cache[i].locked,'over_18':cache[i].over_18,'subreddit':cache[i].subreddit,'total_awards_received':cache[i].total_awards_received,'score':cache[i].score}
+    df = df.append(new_row, ignore_index=True)
+    
+print("Done!")
+
+#Name the csv file as you want
+df.to_csv('User_Publications.csv')
